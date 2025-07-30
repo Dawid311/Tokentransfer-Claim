@@ -49,7 +49,3 @@ export function validateRequest(body) {
     walletAddress: body.walletAddress
   };
 }
-    amount: amount,
-    walletAddress: body.walletAddress
-  };
-}

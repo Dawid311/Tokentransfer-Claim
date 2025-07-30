@@ -220,5 +220,3 @@ class TransactionQueue {
 // Create singleton instance
 export const transactionQueue = new TransactionQueue();
 console.log('TransactionQueue singleton created and exported');
-export const transactionQueue = new TransactionQueue();
-console.log('TransactionQueue singleton created and exported');
