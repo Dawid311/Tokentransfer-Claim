@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Transfer Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            border-radius: 8px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #4f46e5;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+        
+        .processing-indicator {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+        }
+        
+        .processing-indicator .stat-number {
+            color: #f59e0b;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            background: #f8fafc;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            background: white;
+            color: #4f46e5;
+            border-bottom: 2px solid #4f46e5;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 30px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .transaction-list {
+            space-y: 15px;
+        }
+        
+        .transaction-item {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            background: white;
+            transition: all 0.3s;
+        }
+        
+        .transaction-item:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .transaction-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .transaction-id {
+            font-family: monospace;
+            background: #f1f5f9;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .status-queued {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .status-processing {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-failed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .transaction-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            font-size: 0.9rem;
+        }
+        
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .detail-label {
+            color: #64748b;
+            font-weight: 500;
+        }
+        
+        .detail-value {
+            font-family: monospace;
+            color: #334155;
+        }
+        
+        .refresh-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+            font-size: 1.5rem;
+        }
+        
+        .refresh-btn:hover {
+            background: #4338ca;
+            transform: scale(1.1);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+        
+        @media (max-width: 768px) {
+            .transaction-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Token Transfer Dashboard</h1>
+            <p>D.FAITH Token & ETH Transfer Queue Monitor</p>
+        </div>
+        
+        <div class="stats" id="stats">
+            <!-- Stats werden hier eingefügt -->
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('queued')">Warteschlange</button>
+            <button class="tab" onclick="switchTab('completed')">Abgeschlossen</button>
+            <button class="tab" onclick="switchTab('failed')">Fehlgeschlagen</button>
+        </div>
+        
+        <div class="tab-content active" id="queued-tab">
+            <div id="queued-transactions" class="transaction-list">
+                <div class="loading">Lade Transaktionen...</div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="completed-tab">
+            <div id="completed-transactions" class="transaction-list">
+                <div class="loading">Lade Transaktionen...</div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="failed-tab">
+            <div id="failed-transactions" class="transaction-list">
+                <div class="loading">Lade Transaktionen...</div>
+            </div>
+        </div>
+    </div>
+    
+    <button class="refresh-btn" onclick="loadDashboard()" title="Aktualisieren">
+        🔄
+    </button>
+
+    <script>
+        let currentTab = 'queued';
+        
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            currentTab = tabName;
+        }
+        
+        function formatTimestamp(timestamp) {
+            return new Date(timestamp).toLocaleString('de-DE');
+        }
+        
+        function formatAddress(address) {
+            return address.substring(0, 6) + '...' + address.substring(address.length - 4);
+        }
+        
+        function getStatusClass(status) {
+            return `status-${status}`;
+        }
+        
+        function renderStats(stats) {
+            const statsHtml = `
+                <div class="stat-card ${stats.isProcessing ? 'processing-indicator' : ''}">
+                    <div class="stat-number">${stats.totalQueued}</div>
+                    <div class="stat-label">In Warteschlange</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.totalCompleted}</div>
+                    <div class="stat-label">Abgeschlossen</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.totalFailed}</div>
+                    <div class="stat-label">Fehlgeschlagen</div>
+                </div>
+                <div class="stat-card ${stats.isProcessing ? 'processing-indicator' : ''}">
+                    <div class="stat-number">${stats.isProcessing ? '🔄' : '⏸️'}</div>
+                    <div class="stat-label">${stats.isProcessing ? 'Verarbeitung läuft' : 'Warten'}</div>
+                </div>
+            `;
+            document.getElementById('stats').innerHTML = statsHtml;
+        }
+        
+        function renderTransactions(transactions, containerId) {
+            const container = document.getElementById(containerId);
+            
+            if (transactions.length === 0) {
+                container.innerHTML = '<div class="empty-state">Keine Transaktionen vorhanden</div>';
+                return;
+            }
+            
+            const transactionsHtml = transactions.map(tx => `
+                <div class="transaction-item">
+                    <div class="transaction-header">
+                        <span class="transaction-id">${tx.id}</span>
+                        <span class="status-badge ${getStatusClass(tx.status)}">${tx.status}</span>
+                    </div>
+                    <div class="transaction-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Wallet:</span>
+                            <span class="detail-value">${formatAddress(tx.walletAddress)}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">D.FAITH Amount:</span>
+                            <span class="detail-value">${tx.amount}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Erstellt:</span>
+                            <span class="detail-value">${formatTimestamp(tx.createdAt)}</span>
+                        </div>
+                        ${tx.completedAt ? `
+                        <div class="detail-item">
+                            <span class="detail-label">Abgeschlossen:</span>
+                            <span class="detail-value">${formatTimestamp(tx.completedAt)}</span>
+                        </div>
+                        ` : ''}
+                        ${tx.error ? `
+                        <div class="detail-item">
+                            <span class="detail-label">Fehler:</span>
+                            <span class="detail-value" style="color: #dc2626;">${tx.error}</span>
+                        </div>
+                        ` : ''}
+                        ${tx.result && tx.result.tokenTx ? `
+                        <div class="detail-item">
+                            <span class="detail-label">Token TX:</span>
+                            <span class="detail-value">${tx.result.tokenTx.hash.substring(0, 10)}...</span>
+                        </div>
+                        ` : ''}
+                        ${tx.result && tx.result.ethTx ? `
+                        <div class="detail-item">
+                            <span class="detail-label">ETH TX:</span>
+                            <span class="detail-value">${tx.result.ethTx.hash.substring(0, 10)}...</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = transactionsHtml;
+        }
+        
+        async function loadDashboard() {
+            try {
+                const response = await fetch('/api/dashboard');
+                const result = await response.json();
+                
+                if (result.success) {
+                    const data = result.data;
+                    
+                    renderStats(data.stats);
+                    renderTransactions(data.queuedTransactions, 'queued-transactions');
+                    renderTransactions(data.completedTransactions, 'completed-transactions');
+                    renderTransactions(data.failedTransactions, 'failed-transactions');
+                } else {
+                    console.error('Dashboard load failed:', result.error);
+                }
+            } catch (error) {
+                console.error('Failed to load dashboard:', error);
+            }
+        }
+        
+        // Initial load
+        loadDashboard();
+        
+        // Auto-refresh every 5 seconds
+        setInterval(loadDashboard, 5000);
+    </script>
+</body>
+</html>
