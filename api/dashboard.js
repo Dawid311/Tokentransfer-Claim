@@ -1,4 +1,4 @@
-import { transactionQueue } from '../utils/transactionQueue.js';
+import { transactionQueue } from '../utils/queue.js';
 
 export default async function handler(req, res) {
   // Set CORS headers

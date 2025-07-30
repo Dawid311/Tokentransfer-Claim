@@ -23,13 +23,18 @@ export function validateEnv() {
   }
 }
 
-// Validation functions
+// Request validation
 export function validateRequest(body) {
+  if (!body || typeof body !== 'object') {
+    throw new Error('Invalid request body: must be a JSON object');
+  }
+  
   if (!body.amount || !body.walletAddress) {
     throw new Error('Missing required fields: amount and walletAddress');
   }
   
-  if (isNaN(parseFloat(body.amount)) || parseFloat(body.amount) <= 0) {
+  const amount = parseFloat(body.amount);
+  if (isNaN(amount) || amount <= 0) {
     throw new Error('Invalid amount: must be a positive number');
   }
   
@@ -38,7 +43,7 @@ export function validateRequest(body) {
   }
   
   return {
-    amount: parseFloat(body.amount),
+    amount: amount,
     walletAddress: body.walletAddress
   };
 }

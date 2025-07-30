@@ -12,6 +12,7 @@ class TransactionQueue {
     this.processing = false;
     this.completedTransactions = [];
     this.failedTransactions = [];
+    this.currentTransaction = null;
   }
 
   addTransaction(txData) {
@@ -19,13 +20,19 @@ class TransactionQueue {
       ...txData,
       id: Date.now() + Math.random().toString(36).substr(2, 9),
       status: 'queued',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      queuePosition: this.queue.length + 1
     };
+    
     this.queue.push(transaction);
+    console.log(`Transaction ${transaction.id} added to queue`);
+    
+    // Start processing if not already running
     if (!this.processing) {
       this.processQueue();
     }
-    return transaction.id;
+    
+    return transaction;
   }
 
   async processQueue() {
@@ -34,38 +41,49 @@ class TransactionQueue {
     }
 
     this.processing = true;
-    console.log(`Processing queue with ${this.queue.length} transactions`);
+    console.log(`Starting queue processing with ${this.queue.length} transactions`);
 
     while (this.queue.length > 0) {
-      const txData = this.queue.shift();
-      txData.status = 'processing';
-      txData.startedAt = new Date().toISOString();
+      const transaction = this.queue.shift();
+      this.currentTransaction = transaction;
       
       try {
-        const result = await this.executeTransactions(txData);
-        txData.status = 'completed';
-        txData.completedAt = new Date().toISOString();
-        txData.result = result;
-        this.completedTransactions.push(txData);
-        console.log(`Successfully processed transaction ${txData.id} for ${txData.walletAddress}`);
+        transaction.status = 'processing';
+        transaction.startedAt = new Date().toISOString();
+        
+        console.log(`Processing transaction ${transaction.id} for ${transaction.walletAddress}`);
+        
+        await this.executeTransactions(transaction);
+        
+        transaction.status = 'completed';
+        transaction.completedAt = new Date().toISOString();
+        this.completedTransactions.push(transaction);
+        
+        console.log(`✅ Transaction ${transaction.id} completed successfully`);
+        
       } catch (error) {
-        txData.status = 'failed';
-        txData.failedAt = new Date().toISOString();
-        txData.error = error.message;
-        this.failedTransactions.push(txData);
-        console.error(`Failed to process transaction ${txData.id} for ${txData.walletAddress}:`, error);
-        // Optionally re-queue failed transactions or handle them differently
+        console.error(`❌ Transaction ${transaction.id} failed:`, error.message);
+        
+        transaction.status = 'failed';
+        transaction.error = error.message;
+        transaction.failedAt = new Date().toISOString();
+        this.failedTransactions.push(transaction);
       }
       
-      // Add a small delay between transactions to avoid overwhelming the network
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      this.currentTransaction = null;
+      
+      // Small delay between transactions
+      if (this.queue.length > 0) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
     }
 
     this.processing = false;
+    console.log('Queue processing completed');
   }
 
-  async executeTransactions(txData) {
-    const { amount, walletAddress } = txData;
+  async executeTransactions(transaction) {
+    const { amount, walletAddress } = transaction;
     
     // Setup provider and wallet
     const provider = new ethers.JsonRpcProvider(BASE_RPC_URL);
@@ -75,15 +93,13 @@ class TransactionQueue {
     console.log(`- D.FAITH amount: ${amount}`);
     console.log(`- ETH amount: ${process.env.ETH_AMOUNT}`);
 
-    const results = {};
-    
     // 1. Send D.FAITH tokens
-    results.tokenTx = await this.sendTokens(wallet, walletAddress, amount);
+    const tokenTx = await this.sendTokens(wallet, walletAddress, amount);
+    transaction.tokenTxHash = tokenTx.hash;
     
     // 2. Send ETH
-    results.ethTx = await this.sendETH(wallet, walletAddress, process.env.ETH_AMOUNT);
-    
-    return results;
+    const ethTx = await this.sendETH(wallet, walletAddress, process.env.ETH_AMOUNT);
+    transaction.ethTxHash = ethTx.hash;
   }
 
   async sendTokens(wallet, toAddress, amount) {
@@ -101,7 +117,9 @@ class TransactionQueue {
     }
     
     // Send tokens
-    const tx = await tokenContract.transfer(toAddress, tokenAmount);
+    const tx = await tokenContract.transfer(toAddress, tokenAmount, {
+      gasLimit: 100000
+    });
     console.log(`D.FAITH transfer transaction sent: ${tx.hash}`);
     
     const receipt = await tx.wait();
@@ -117,14 +135,17 @@ class TransactionQueue {
     
     // Check ETH balance
     const balance = await wallet.provider.getBalance(wallet.address);
-    if (balance < ethAmountWei) {
-      throw new Error(`Insufficient ETH balance. Required: ${ethAmount}, Available: ${ethers.formatEther(balance)}`);
+    const estimatedGas = ethers.parseEther('0.001'); // Estimated gas cost
+    
+    if (balance < (ethAmountWei + estimatedGas)) {
+      throw new Error(`Insufficient ETH balance. Required: ${ethAmount} + gas, Available: ${ethers.formatEther(balance)}`);
     }
     
     // Send ETH
     const tx = await wallet.sendTransaction({
       to: toAddress,
-      value: ethAmountWei
+      value: ethAmountWei,
+      gasLimit: 21000
     });
     console.log(`ETH transfer transaction sent: ${tx.hash}`);
     
@@ -134,17 +155,19 @@ class TransactionQueue {
     return receipt;
   }
 
-  // Dashboard methods
+  // Queue status methods
   getQueueStatus() {
     return {
-      queuedTransactions: this.queue.map(tx => ({
+      queue: this.queue.map(tx => ({
         ...tx,
-        status: tx.status || 'queued'
+        queuePosition: this.queue.indexOf(tx) + 1
       })),
-      completedTransactions: this.completedTransactions.slice(-50), // Last 50
-      failedTransactions: this.failedTransactions.slice(-20), // Last 20
+      processing: this.processing,
+      currentTransaction: this.currentTransaction,
+      completed: this.completedTransactions.slice(-10), // Last 10 completed
+      failed: this.failedTransactions.slice(-10), // Last 10 failed
       stats: {
-        totalQueued: this.queue.length,
+        queueLength: this.queue.length,
         totalCompleted: this.completedTransactions.length,
         totalFailed: this.failedTransactions.length,
         isProcessing: this.processing
@@ -153,11 +176,17 @@ class TransactionQueue {
   }
 
   getTransactionById(id) {
+    // Search in all arrays
     const allTransactions = [
       ...this.queue,
       ...this.completedTransactions,
       ...this.failedTransactions
     ];
+    
+    if (this.currentTransaction && this.currentTransaction.id === id) {
+      return this.currentTransaction;
+    }
+    
     return allTransactions.find(tx => tx.id === id);
   }
 }

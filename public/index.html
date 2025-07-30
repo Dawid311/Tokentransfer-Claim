@@ -22,111 +22,93 @@
             max-width: 1200px;
             margin: 0 auto;
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             overflow: hidden;
         }
         
         .header {
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            background: linear-gradient(45deg, #1e3c72, #2a5298);
             color: white;
             padding: 30px;
             text-align: center;
         }
         
         .header h1 {
-            font-size: 2.5rem;
+            font-size: 2.5em;
             margin-bottom: 10px;
         }
         
         .header p {
             opacity: 0.9;
-            font-size: 1.1rem;
+            font-size: 1.1em;
         }
         
-        .stats {
+        .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
             padding: 30px;
-            border-bottom: 1px solid #e5e7eb;
+            background: #f8f9fa;
         }
         
         .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             text-align: center;
-            padding: 20px;
-            border-radius: 8px;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
+            transition: transform 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
         }
         
         .stat-number {
-            font-size: 2rem;
+            font-size: 2.5em;
             font-weight: bold;
-            color: #4f46e5;
-            margin-bottom: 5px;
+            margin-bottom: 10px;
         }
         
         .stat-label {
-            color: #64748b;
-            font-size: 0.9rem;
+            color: #666;
+            font-size: 1.1em;
         }
         
-        .processing-indicator {
-            background: #fef3c7;
-            border: 1px solid #f59e0b;
-        }
+        .queued { color: #ffa500; }
+        .processing { color: #007bff; }
+        .completed { color: #28a745; }
+        .failed { color: #dc3545; }
         
-        .processing-indicator .stat-number {
-            color: #f59e0b;
-        }
-        
-        .tabs {
-            display: flex;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        
-        .tab {
-            flex: 1;
-            padding: 15px;
-            text-align: center;
-            background: #f8fafc;
-            border: none;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: all 0.3s;
-        }
-        
-        .tab.active {
-            background: white;
-            color: #4f46e5;
-            border-bottom: 2px solid #4f46e5;
-        }
-        
-        .tab-content {
-            display: none;
+        .transactions-section {
             padding: 30px;
         }
         
-        .tab-content.active {
-            display: block;
+        .section-title {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
         }
         
-        .transaction-list {
-            space-y: 15px;
+        .transaction-grid {
+            display: grid;
+            gap: 20px;
+            margin-bottom: 40px;
         }
         
-        .transaction-item {
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 15px;
+        .transaction-card {
             background: white;
-            transition: all 0.3s;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.3s ease;
         }
         
-        .transaction-item:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        .transaction-card:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
         
         .transaction-header {
@@ -138,105 +120,99 @@
         
         .transaction-id {
             font-family: monospace;
-            background: #f1f5f9;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.9rem;
+            background: #f8f9fa;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
         }
         
-        .status-badge {
-            padding: 4px 12px;
+        .transaction-status {
+            padding: 5px 15px;
             border-radius: 20px;
-            font-size: 0.8rem;
+            color: white;
             font-weight: bold;
-            text-transform: uppercase;
+            font-size: 0.85em;
         }
         
-        .status-queued {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-        
-        .status-processing {
-            background: #fef3c7;
-            color: #92400e;
-        }
-        
-        .status-completed {
-            background: #d1fae5;
-            color: #065f46;
-        }
-        
-        .status-failed {
-            background: #fee2e2;
-            color: #991b1b;
-        }
+        .status-queued { background: #ffa500; }
+        .status-processing { background: #007bff; }
+        .status-completed { background: #28a745; }
+        .status-failed { background: #dc3545; }
         
         .transaction-details {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
-            font-size: 0.9rem;
         }
         
         .detail-item {
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
         }
         
         .detail-label {
-            color: #64748b;
-            font-weight: 500;
+            font-weight: bold;
+            color: #666;
+            margin-bottom: 5px;
         }
         
         .detail-value {
-            font-family: monospace;
-            color: #334155;
+            color: #333;
+            word-break: break-all;
+        }
+        
+        .wallet-info {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+        
+        .wallet-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
         }
         
         .refresh-btn {
             position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background: #4f46e5;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
             color: white;
             border: none;
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
+            padding: 15px 20px;
+            border-radius: 50px;
             cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            transition: all 0.3s;
-            font-size: 1.5rem;
+            box-shadow: 0 4px 15px rgba(40,167,69,0.3);
+            transition: all 0.3s ease;
         }
         
         .refresh-btn:hover {
-            background: #4338ca;
-            transform: scale(1.1);
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: #64748b;
+            background: #218838;
+            transform: scale(1.05);
         }
         
         .loading {
             text-align: center;
             padding: 40px;
-            color: #64748b;
+            color: #666;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
         }
         
         @media (max-width: 768px) {
-            .transaction-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
-            }
-            
-            .stats {
-                grid-template-columns: repeat(2, 1fr);
-            }
+            .header h1 { font-size: 2em; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .transaction-details { grid-template-columns: 1fr; }
+            .wallet-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -244,174 +220,223 @@
     <div class="container">
         <div class="header">
             <h1>🚀 Token Transfer Dashboard</h1>
-            <p>D.FAITH Token & ETH Transfer Queue Monitor</p>
+            <p>D.FAITH Token & ETH Transfer Service auf Base Chain</p>
         </div>
         
-        <div class="stats" id="stats">
-            <!-- Stats werden hier eingefügt -->
-        </div>
-        
-        <div class="tabs">
-            <button class="tab active" onclick="switchTab('queued')">Warteschlange</button>
-            <button class="tab" onclick="switchTab('completed')">Abgeschlossen</button>
-            <button class="tab" onclick="switchTab('failed')">Fehlgeschlagen</button>
-        </div>
-        
-        <div class="tab-content active" id="queued-tab">
-            <div id="queued-transactions" class="transaction-list">
-                <div class="loading">Lade Transaktionen...</div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number queued" id="queueCount">-</div>
+                <div class="stat-label">In Warteschlange</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number processing" id="processingCount">-</div>
+                <div class="stat-label">In Bearbeitung</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number completed" id="completedCount">-</div>
+                <div class="stat-label">Abgeschlossen</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number failed" id="failedCount">-</div>
+                <div class="stat-label">Fehlgeschlagen</div>
             </div>
         </div>
         
-        <div class="tab-content" id="completed-tab">
-            <div id="completed-transactions" class="transaction-list">
-                <div class="loading">Lade Transaktionen...</div>
+        <div id="walletInfo" class="wallet-info" style="display: none;">
+            <h3>💰 Wallet Status</h3>
+            <div class="wallet-grid">
+                <div>
+                    <strong>ETH Balance:</strong>
+                    <div id="ethBalance">-</div>
+                </div>
+                <div>
+                    <strong>D.FAITH Balance:</strong>
+                    <div id="tokenBalance">-</div>
+                </div>
+                <div>
+                    <strong>Wallet Address:</strong>
+                    <div id="walletAddress" style="font-size: 0.9em;">-</div>
+                </div>
+                <div>
+                    <strong>Chain ID:</strong>
+                    <div id="chainId">-</div>
+                </div>
             </div>
         </div>
         
-        <div class="tab-content" id="failed-tab">
-            <div id="failed-transactions" class="transaction-list">
-                <div class="loading">Lade Transaktionen...</div>
-            </div>
+        <div class="transactions-section">
+            <h2 class="section-title">📋 Aktuelle Warteschlange</h2>
+            <div id="queueSection" class="transaction-grid"></div>
+            
+            <h2 class="section-title">✅ Abgeschlossene Transaktionen</h2>
+            <div id="completedSection" class="transaction-grid"></div>
+            
+            <h2 class="section-title">❌ Fehlgeschlagene Transaktionen</h2>
+            <div id="failedSection" class="transaction-grid"></div>
         </div>
     </div>
     
-    <button class="refresh-btn" onclick="loadDashboard()" title="Aktualisieren">
-        🔄
+    <button class="refresh-btn" onclick="loadData()" id="refreshBtn">
+        🔄 Aktualisieren
     </button>
-
+    
     <script>
-        let currentTab = 'queued';
+        let autoRefresh = true;
         
-        function switchTab(tabName) {
-            // Update tab buttons
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            event.target.classList.add('active');
+        async function loadData() {
+            try {
+                document.getElementById('refreshBtn').style.transform = 'scale(0.95)';
+                
+                // Load dashboard data
+                const dashboardResponse = await fetch('/api/dashboard');
+                const dashboardData = await dashboardResponse.json();
+                
+                if (dashboardData.success) {
+                    updateStats(dashboardData.data.stats);
+                    updateTransactions(dashboardData.data);
+                }
+                
+                // Load wallet status
+                try {
+                    const statusResponse = await fetch('/api/status');
+                    const statusData = await statusResponse.json();
+                    
+                    if (statusData.success) {
+                        updateWalletInfo(statusData);
+                    }
+                } catch (error) {
+                    console.log('Wallet status not available:', error);
+                }
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                showError('Fehler beim Laden der Daten: ' + error.message);
+            } finally {
+                setTimeout(() => {
+                    document.getElementById('refreshBtn').style.transform = 'scale(1)';
+                }, 200);
+            }
+        }
+        
+        function updateStats(stats) {
+            document.getElementById('queueCount').textContent = stats.queueLength || 0;
+            document.getElementById('processingCount').textContent = stats.isProcessing ? 1 : 0;
+            document.getElementById('completedCount').textContent = stats.totalCompleted || 0;
+            document.getElementById('failedCount').textContent = stats.totalFailed || 0;
+        }
+        
+        function updateWalletInfo(statusData) {
+            const walletInfo = document.getElementById('walletInfo');
+            walletInfo.style.display = 'block';
             
-            // Update tab content
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            document.getElementById(tabName + '-tab').classList.add('active');
-            
-            currentTab = tabName;
+            document.getElementById('ethBalance').textContent = parseFloat(statusData.wallet.ethBalance).toFixed(6) + ' ETH';
+            document.getElementById('tokenBalance').textContent = parseFloat(statusData.wallet.tokenBalance).toFixed(2) + ' D.FAITH';
+            document.getElementById('walletAddress').textContent = statusData.wallet.address;
+            document.getElementById('chainId').textContent = statusData.network.chainId + ' (Base)';
         }
         
-        function formatTimestamp(timestamp) {
-            return new Date(timestamp).toLocaleString('de-DE');
+        function updateTransactions(data) {
+            updateTransactionSection('queueSection', data.queue || []);
+            updateTransactionSection('completedSection', data.completed || []);
+            updateTransactionSection('failedSection', data.failed || []);
         }
         
-        function formatAddress(address) {
-            return address.substring(0, 6) + '...' + address.substring(address.length - 4);
-        }
-        
-        function getStatusClass(status) {
-            return `status-${status}`;
-        }
-        
-        function renderStats(stats) {
-            const statsHtml = `
-                <div class="stat-card ${stats.isProcessing ? 'processing-indicator' : ''}">
-                    <div class="stat-number">${stats.totalQueued}</div>
-                    <div class="stat-label">In Warteschlange</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">${stats.totalCompleted}</div>
-                    <div class="stat-label">Abgeschlossen</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">${stats.totalFailed}</div>
-                    <div class="stat-label">Fehlgeschlagen</div>
-                </div>
-                <div class="stat-card ${stats.isProcessing ? 'processing-indicator' : ''}">
-                    <div class="stat-number">${stats.isProcessing ? '🔄' : '⏸️'}</div>
-                    <div class="stat-label">${stats.isProcessing ? 'Verarbeitung läuft' : 'Warten'}</div>
-                </div>
-            `;
-            document.getElementById('stats').innerHTML = statsHtml;
-        }
-        
-        function renderTransactions(transactions, containerId) {
-            const container = document.getElementById(containerId);
+        function updateTransactionSection(sectionId, transactions) {
+            const section = document.getElementById(sectionId);
             
             if (transactions.length === 0) {
-                container.innerHTML = '<div class="empty-state">Keine Transaktionen vorhanden</div>';
+                section.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">Keine Transaktionen</div>';
                 return;
             }
             
-            const transactionsHtml = transactions.map(tx => `
-                <div class="transaction-item">
+            section.innerHTML = transactions.map(tx => `
+                <div class="transaction-card">
                     <div class="transaction-header">
-                        <span class="transaction-id">${tx.id}</span>
-                        <span class="status-badge ${getStatusClass(tx.status)}">${tx.status}</span>
+                        <div class="transaction-id">ID: ${tx.id}</div>
+                        <div class="transaction-status status-${tx.status}">${getStatusText(tx.status)}</div>
                     </div>
                     <div class="transaction-details">
                         <div class="detail-item">
-                            <span class="detail-label">Wallet:</span>
-                            <span class="detail-value">${formatAddress(tx.walletAddress)}</span>
+                            <div class="detail-label">Wallet-Adresse</div>
+                            <div class="detail-value">${tx.walletAddress}</div>
                         </div>
                         <div class="detail-item">
-                            <span class="detail-label">D.FAITH Amount:</span>
-                            <span class="detail-value">${tx.amount}</span>
+                            <div class="detail-label">D.FAITH Betrag</div>
+                            <div class="detail-value">${tx.amount} D.FAITH</div>
                         </div>
                         <div class="detail-item">
-                            <span class="detail-label">Erstellt:</span>
-                            <span class="detail-value">${formatTimestamp(tx.createdAt)}</span>
+                            <div class="detail-label">Erstellt</div>
+                            <div class="detail-value">${formatDate(tx.createdAt)}</div>
                         </div>
-                        ${tx.completedAt ? `
+                        ${tx.tokenTxHash ? `
                         <div class="detail-item">
-                            <span class="detail-label">Abgeschlossen:</span>
-                            <span class="detail-value">${formatTimestamp(tx.completedAt)}</span>
+                            <div class="detail-label">Token TX</div>
+                            <div class="detail-value" style="font-size: 0.9em;">${tx.tokenTxHash}</div>
+                        </div>
+                        ` : ''}
+                        ${tx.ethTxHash ? `
+                        <div class="detail-item">
+                            <div class="detail-label">ETH TX</div>
+                            <div class="detail-value" style="font-size: 0.9em;">${tx.ethTxHash}</div>
                         </div>
                         ` : ''}
                         ${tx.error ? `
                         <div class="detail-item">
-                            <span class="detail-label">Fehler:</span>
-                            <span class="detail-value" style="color: #dc2626;">${tx.error}</span>
+                            <div class="detail-label">Fehler</div>
+                            <div class="detail-value" style="color: #dc3545;">${tx.error}</div>
                         </div>
                         ` : ''}
-                        ${tx.result && tx.result.tokenTx ? `
+                        ${tx.queuePosition ? `
                         <div class="detail-item">
-                            <span class="detail-label">Token TX:</span>
-                            <span class="detail-value">${tx.result.tokenTx.hash.substring(0, 10)}...</span>
-                        </div>
-                        ` : ''}
-                        ${tx.result && tx.result.ethTx ? `
-                        <div class="detail-item">
-                            <span class="detail-label">ETH TX:</span>
-                            <span class="detail-value">${tx.result.ethTx.hash.substring(0, 10)}...</span>
+                            <div class="detail-label">Queue Position</div>
+                            <div class="detail-value">#${tx.queuePosition}</div>
                         </div>
                         ` : ''}
                     </div>
                 </div>
             `).join('');
+        }
+        
+        function getStatusText(status) {
+            const statusMap = {
+                'queued': 'Warteschlange',
+                'processing': 'Bearbeitung',
+                'completed': 'Abgeschlossen',
+                'failed': 'Fehlgeschlagen'
+            };
+            return statusMap[status] || status;
+        }
+        
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString('de-DE');
+        }
+        
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = message;
+            document.querySelector('.container').appendChild(errorDiv);
             
-            container.innerHTML = transactionsHtml;
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 5000);
         }
-        
-        async function loadDashboard() {
-            try {
-                const response = await fetch('/api/dashboard');
-                const result = await response.json();
-                
-                if (result.success) {
-                    const data = result.data;
-                    
-                    renderStats(data.stats);
-                    renderTransactions(data.queuedTransactions, 'queued-transactions');
-                    renderTransactions(data.completedTransactions, 'completed-transactions');
-                    renderTransactions(data.failedTransactions, 'failed-transactions');
-                } else {
-                    console.error('Dashboard load failed:', result.error);
-                }
-            } catch (error) {
-                console.error('Failed to load dashboard:', error);
-            }
-        }
-        
-        // Initial load
-        loadDashboard();
         
         // Auto-refresh every 5 seconds
-        setInterval(loadDashboard, 5000);
+        setInterval(() => {
+            if (autoRefresh) {
+                loadData();
+            }
+        }, 5000);
+        
+        // Initial load
+        loadData();
+        
+        // Pause auto-refresh when user is away
+        document.addEventListener('visibilitychange', () => {
+            autoRefresh = !document.hidden;
+        });
     </script>
 </body>
 </html>

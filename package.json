@@ -2,15 +2,14 @@
   "name": "tokentransfer-claim",
   "version": "1.0.0",
   "description": "Token transfer claim service for Base Chain",
-  "main": "index.js",
+  "main": "api/index.js",
   "type": "module",
   "scripts": {
     "dev": "vercel dev",
-    "build": "echo 'No build step needed'",
+    "build": "echo 'Build completed successfully'",
     "start": "vercel dev",
-    "test": "node test/webhook-test.js",
-    "deploy": "./deploy.sh",
-    "status": "curl http://localhost:3000/api/status"
+    "deploy": "vercel --prod",
+    "test": "node test/webhook-test.js"
   },
   "dependencies": {
     "ethers": "^6.8.1",

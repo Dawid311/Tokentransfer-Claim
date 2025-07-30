@@ -1,5 +1,5 @@
 import { validateEnv, validateRequest } from '../config.js';
-import { transactionQueue } from '../utils/transactionQueue.js';
+import { transactionQueue } from '../utils/queue.js';
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -48,7 +48,7 @@ export default async function handler(req, res) {
         transactionId: transaction.id,
         amount,
         walletAddress,
-        queuePosition: transactionQueue.queue.length
+        queuePosition: transaction.queuePosition
       }
     });
 

@@ -29,6 +29,6 @@
   ],
   "env": {
     "PRIVATE_KEY": "@private_key",
-    "ETH_AMOUNT": "0.0000001"
+    "ETH_AMOUNT": "0.001"
   }
 }
