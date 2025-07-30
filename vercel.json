@@ -27,8 +27,5 @@
       "destination": "/api/index"
     }
   ],
-  "env": {
-    "PRIVATE_KEY": "@private_key",
-    "ETH_AMOUNT": "0.001"
-  }
+  "buildCommand": "npm run build"
 }
