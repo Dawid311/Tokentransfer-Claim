@@ -4,7 +4,7 @@ async function testTatumWebhook() {
   console.log('🚀 Teste Tatum API Implementation...\n');
   
   const testData = {
-    amount: 1, // Kleinere Menge zum Testen
+    amount: 5, // 5 Token wie gewünscht
     walletAddress: "0xeF54a1003C7BcbC5706B96B2839A76D2A4C68bCF"
   };
   

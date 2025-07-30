@@ -218,9 +218,8 @@ class TransactionQueue {
       const tokenAmount = ethers.parseUnits(amount.toString(), DFAITH_DECIMALS);
       console.log(`🔢 Token amount in units: ${tokenAmount.toString()}`);
       
-      // Prepare Tatum API request for ERC-20 transfer
+      // Prepare Tatum Base API request for ERC-20 transfer
       const tatumRequest = {
-        chain: 'BASE',
         to: toAddress,
         amount: tokenAmount.toString(),
         contractAddress: DFAITH_TOKEN_ADDRESS,
@@ -231,8 +230,8 @@ class TransactionQueue {
         }
       };
       
-      console.log(`📡 Sending Tatum API request...`);
-      const response = await fetch('https://api.tatum.io/v3/blockchain/token/transaction', {
+      console.log(`📡 Sending Tatum Base API request...`);
+      const response = await fetch('https://api.tatum.io/v3/base/transaction', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -268,9 +267,8 @@ class TransactionQueue {
       const ethAmountWei = ethers.parseEther(ethAmount);
       console.log(`🔢 ETH amount in wei: ${ethAmountWei.toString()}`);
       
-      // Prepare Tatum API request for ETH transfer
+      // Prepare Tatum Base API request for ETH transfer
       const tatumRequest = {
-        chain: 'BASE',
         to: toAddress,
         amount: ethers.formatEther(ethAmountWei), // Tatum expects ETH amount in ETH, not wei
         fromPrivateKey: process.env.PRIVATE_KEY,
@@ -280,8 +278,8 @@ class TransactionQueue {
         }
       };
       
-      console.log(`� Sending Tatum API request...`);
-      const response = await fetch('https://api.tatum.io/v3/blockchain/transaction', {
+      console.log(`📡 Sending Tatum Base API request...`);
+      const response = await fetch('https://api.tatum.io/v3/base/transaction', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
