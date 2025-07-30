@@ -26,7 +26,7 @@ class TransactionQueue {
   addTransaction(txData) {
     const transaction = {
       ...txData,
-      id: Date.now() + Math.random().toString(36).substr(2, 9),
+      id: `tx_${Date.now()}_${Math.random().toString(36).substr(2, 12)}`,
       status: 'queued',
       createdAt: new Date().toISOString(),
       queuePosition: this.queue.length + 1

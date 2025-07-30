@@ -6,6 +6,7 @@ import {
   ERC20_ABI,
   validateEnv 
 } from '../config.js';
+import { transactionQueue } from '../utils/queue.js';
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -75,4 +76,64 @@ export default async function handler(req, res) {
       timestamp: new Date().toISOString()
     });
   }
+}
+
+export async function transactionStatusHandler(req, res) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method === 'GET') {
+    try {
+      const { id } = req.query;
+
+      if (id) {
+        // Get specific transaction by ID
+        const transaction = transactionQueue.getTransactionById(id);
+        
+        if (!transaction) {
+          return res.status(404).json({
+            success: false,
+            message: 'Transaction not found'
+          });
+        }
+
+        return res.status(200).json({
+          success: true,
+          data: {
+            ...transaction,
+            blockchainTxHashes: {
+              tokenTransfer: transaction.tokenTxHash || null,
+              ethTransfer: transaction.ethTxHash || null
+            }
+          }
+        });
+      } else {
+        // Get queue status
+        const status = transactionQueue.getQueueStatus();
+        return res.status(200).json({
+          success: true,
+          data: status
+        });
+      }
+    } catch (error) {
+      console.error('Status API error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  return res.status(405).json({
+    success: false,
+    message: 'Method not allowed'
+  });
 }
