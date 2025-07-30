@@ -41,11 +41,26 @@ export default async function handler(req, res) {
         timestamp: Date.now()
       });
 
+      console.log(`🚀 Transaction ${transaction.id} added, starting processing...`);
+
       // Wait for the immediate processing to complete
-      await transactionQueue.processQueueImmediate();
+      try {
+        await transactionQueue.processQueueImmediate();
+        console.log(`✅ Processing completed for transaction ${transaction.id}`);
+      } catch (processingError) {
+        console.error(`❌ Processing error for transaction ${transaction.id}:`, processingError);
+        throw processingError;
+      }
 
       // Check final status
       const finalTransaction = transactionQueue.getTransactionById(transaction.id);
+      console.log(`📊 Final transaction status:`, {
+        id: finalTransaction?.id,
+        status: finalTransaction?.status,
+        error: finalTransaction?.error,
+        tokenTxHash: finalTransaction?.tokenTxHash,
+        ethTxHash: finalTransaction?.ethTxHash
+      });
       
       if (finalTransaction && finalTransaction.status === 'completed') {
         return res.status(200).json({
@@ -62,6 +77,7 @@ export default async function handler(req, res) {
           }
         });
       } else if (finalTransaction && finalTransaction.status === 'failed') {
+        console.error(`💥 Transaction failed:`, finalTransaction.error);
         return res.status(400).json({
           success: false,
           message: 'Transaction failed',
@@ -75,6 +91,7 @@ export default async function handler(req, res) {
           }
         });
       } else {
+        console.log(`⏳ Transaction still processing or unknown status`);
         return res.status(200).json({
           success: true,
           message: 'Transaction queued successfully',

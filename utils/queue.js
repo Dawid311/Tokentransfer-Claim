@@ -218,20 +218,30 @@ class TransactionQueue {
       const tokenAmount = ethers.parseUnits(amount.toString(), DFAITH_DECIMALS);
       console.log(`🔢 Token amount in units: ${tokenAmount.toString()}`);
       
-      // Prepare Tatum Base API request for ERC-20 transfer
+      // Prepare Tatum ERC-20 transfer request (corrected endpoint and format)
       const tatumRequest = {
+        chain: "BASE",
         to: toAddress,
         amount: tokenAmount.toString(),
         contractAddress: DFAITH_TOKEN_ADDRESS,
         fromPrivateKey: process.env.PRIVATE_KEY,
         fee: {
-          gasLimit: '100000',
-          gasPrice: '20' // 20 Gwei
+          gasLimit: "100000",
+          gasPrice: "1000000000" // 1 Gwei in wei
         }
       };
       
-      console.log(`📡 Sending Tatum Base API request...`);
-      const response = await fetch('https://api.tatum.io/v3/base/transaction', {
+      console.log(`📡 Sending Tatum ERC-20 transfer request...`, {
+        chain: tatumRequest.chain,
+        to: tatumRequest.to,
+        amount: tatumRequest.amount,
+        contractAddress: tatumRequest.contractAddress,
+        gasLimit: tatumRequest.fee.gasLimit,
+        gasPrice: tatumRequest.fee.gasPrice
+      });
+      
+      // Use correct Tatum endpoint for ERC-20 transfers
+      const response = await fetch('https://api.tatum.io/v3/blockchain/token/transaction', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -240,12 +250,18 @@ class TransactionQueue {
         body: JSON.stringify(tatumRequest)
       });
       
+      const responseText = await response.text();
+      console.log(`📋 Tatum API response:`, {
+        status: response.status,
+        statusText: response.statusText,
+        response: responseText
+      });
+      
       if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Tatum API error (${response.status}): ${errorData}`);
+        throw new Error(`Tatum API error (${response.status}): ${responseText}`);
       }
       
-      const result = await response.json();
+      const result = JSON.parse(responseText);
       console.log(`📋 D.FAITH transfer transaction sent: ${result.txId}`);
       
       // Wait a bit for transaction to be mined
@@ -267,19 +283,28 @@ class TransactionQueue {
       const ethAmountWei = ethers.parseEther(ethAmount);
       console.log(`🔢 ETH amount in wei: ${ethAmountWei.toString()}`);
       
-      // Prepare Tatum Base API request for ETH transfer
+      // Prepare Tatum native transfer request (corrected format)
       const tatumRequest = {
+        chain: "BASE",
         to: toAddress,
-        amount: ethers.formatEther(ethAmountWei), // Tatum expects ETH amount in ETH, not wei
+        amount: ethAmount, // Tatum expects ETH amount in ETH, not wei
         fromPrivateKey: process.env.PRIVATE_KEY,
         fee: {
-          gasLimit: '21000',
-          gasPrice: '20' // 20 Gwei
+          gasLimit: "21000",
+          gasPrice: "1000000000" // 1 Gwei in wei
         }
       };
       
-      console.log(`📡 Sending Tatum Base API request...`);
-      const response = await fetch('https://api.tatum.io/v3/base/transaction', {
+      console.log(`📡 Sending Tatum ETH transfer request...`, {
+        chain: tatumRequest.chain,
+        to: tatumRequest.to,
+        amount: tatumRequest.amount,
+        gasLimit: tatumRequest.fee.gasLimit,
+        gasPrice: tatumRequest.fee.gasPrice
+      });
+      
+      // Use correct Tatum endpoint for native transfers
+      const response = await fetch('https://api.tatum.io/v3/blockchain/transaction', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -288,12 +313,18 @@ class TransactionQueue {
         body: JSON.stringify(tatumRequest)
       });
       
+      const responseText = await response.text();
+      console.log(`📋 Tatum API response:`, {
+        status: response.status,
+        statusText: response.statusText,
+        response: responseText
+      });
+      
       if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Tatum API error (${response.status}): ${errorData}`);
+        throw new Error(`Tatum API error (${response.status}): ${responseText}`);
       }
       
-      const result = await response.json();
+      const result = JSON.parse(responseText);
       console.log(`📋 ETH transfer transaction sent: ${result.txId}`);
       
       // Wait a bit for transaction to be mined
@@ -311,7 +342,7 @@ class TransactionQueue {
   async waitForTransactionConfirmation(txHash) {
     try {
       // Wait for transaction confirmation using Tatum API
-      const maxAttempts = 10;
+      const maxAttempts = 5; // Reduziert für schnellere Response
       let attempts = 0;
       
       while (attempts < maxAttempts) {
@@ -323,7 +354,7 @@ class TransactionQueue {
         
         if (response.ok) {
           const txData = await response.json();
-          if (txData.blockNumber) {
+          if (txData.blockNumber && txData.blockNumber > 0) {
             console.log(`✅ Transaction confirmed in block: ${txData.blockNumber}`);
             return txData;
           }
@@ -331,7 +362,7 @@ class TransactionQueue {
         
         attempts++;
         console.log(`⏳ Waiting for confirmation... (${attempts}/${maxAttempts})`);
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Reduziert auf 2 Sekunden
       }
       
       console.log(`⚠️ Transaction confirmation timeout, but likely successful`);
