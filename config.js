@@ -15,7 +15,7 @@ export const ERC20_ABI = [
 
 // Environment variables validation
 export function validateEnv() {
-  const required = ['PRIVATE_KEY', 'ETH_AMOUNT'];
+  const required = ['PRIVATE_KEY', 'ETH_AMOUNT', 'TATUM_API_KEY'];
   const missing = required.filter(key => !process.env[key]);
   
   if (missing.length > 0) {
@@ -23,6 +23,9 @@ export function validateEnv() {
   }
   
   console.log('Environment variables validated successfully');
+  console.log('✅ PRIVATE_KEY exists');
+  console.log('✅ ETH_AMOUNT exists');
+  console.log('✅ TATUM_API_KEY exists');
 }
 
 // Request validation

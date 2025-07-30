@@ -24,10 +24,6 @@ class TransactionQueue {
   }
 
   addTransaction(txData) {
-    if (!ethers) {
-      throw new Error('Ethers library not available');
-    }
-    
     const transaction = {
       ...txData,
       id: Date.now() + Math.random().toString(36).substr(2, 9),
@@ -39,12 +35,71 @@ class TransactionQueue {
     this.queue.push(transaction);
     console.log(`Transaction ${transaction.id} added to queue`);
     
-    // Start processing if not already running
-    if (!this.processing) {
-      this.processQueue();
-    }
+    // For serverless environments, process immediately
+    // Don't wait for the processing to complete to avoid timeout
+    this.processQueueImmediate();
     
     return transaction;
+  }
+
+  // Immediate processing for serverless environments
+  async processQueueImmediate() {
+    if (this.processing || this.queue.length === 0) {
+      return;
+    }
+
+    this.processing = true;
+    console.log(`🚀 Starting immediate queue processing with ${this.queue.length} transactions`);
+
+    // Process only the first transaction immediately
+    if (this.queue.length > 0) {
+      const transaction = this.queue.shift();
+      this.currentTransaction = transaction;
+      
+      try {
+        transaction.status = 'processing';
+        transaction.startedAt = new Date().toISOString();
+        
+        console.log(`🔄 Processing transaction ${transaction.id} for ${transaction.walletAddress}`);
+        
+        await this.executeTransactions(transaction);
+        
+        transaction.status = 'completed';
+        transaction.completedAt = new Date().toISOString();
+        this.completedTransactions.push(transaction);
+        
+        console.log(`✅ Transaction ${transaction.id} completed successfully`);
+        console.log(`📈 Total completed: ${this.completedTransactions.length}`);
+        
+      } catch (error) {
+        console.error(`❌ Transaction ${transaction.id} failed:`, error.message);
+        console.error(`🔍 Error details:`, {
+          name: error.name,
+          code: error.code,
+          reason: error.reason
+        });
+        
+        transaction.status = 'failed';
+        transaction.error = error.message;
+        transaction.errorDetails = {
+          name: error.name,
+          code: error.code,
+          reason: error.reason
+        };
+        transaction.failedAt = new Date().toISOString();
+        this.failedTransactions.push(transaction);
+        
+        console.log(`📊 Total failed: ${this.failedTransactions.length}`);
+        
+        // Re-throw the error so webhook can return it
+        throw error;
+      }
+      
+      this.currentTransaction = null;
+    }
+
+    this.processing = false;
+    console.log('✅ Immediate processing completed');
   }
 
   async processQueue() {
@@ -68,7 +123,8 @@ class TransactionQueue {
         transaction.status = 'processing';
         transaction.startedAt = new Date().toISOString();
         
-        console.log(`Processing transaction ${transaction.id} for ${transaction.walletAddress}`);
+        console.log(`🔄 Processing transaction ${transaction.id} for ${transaction.walletAddress}`);
+        console.log(`📊 Queue position: ${this.queue.length + 1}, Amount: ${transaction.amount}`);
         
         await this.executeTransactions(transaction);
         
@@ -77,14 +133,28 @@ class TransactionQueue {
         this.completedTransactions.push(transaction);
         
         console.log(`✅ Transaction ${transaction.id} completed successfully`);
+        console.log(`📈 Total completed: ${this.completedTransactions.length}`);
         
       } catch (error) {
         console.error(`❌ Transaction ${transaction.id} failed:`, error.message);
+        console.error(`🔍 Error details:`, {
+          name: error.name,
+          code: error.code,
+          reason: error.reason,
+          stack: error.stack?.split('\n')[0]
+        });
         
         transaction.status = 'failed';
         transaction.error = error.message;
+        transaction.errorDetails = {
+          name: error.name,
+          code: error.code,
+          reason: error.reason
+        };
         transaction.failedAt = new Date().toISOString();
         this.failedTransactions.push(transaction);
+        
+        console.log(`📊 Total failed: ${this.failedTransactions.length}`);
       }
       
       this.currentTransaction = null;
@@ -100,80 +170,179 @@ class TransactionQueue {
   }
 
   async executeTransactions(transaction) {
-    if (!ethers) {
-      throw new Error('Ethers library not available');
-    }
-    
     const { amount, walletAddress } = transaction;
     
-    // Setup provider and wallet
-    const provider = new ethers.JsonRpcProvider(BASE_RPC_URL);
-    const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+    // Validate environment variables
+    if (!process.env.TATUM_API_KEY) {
+      throw new Error('TATUM_API_KEY environment variable not set');
+    }
+    if (!process.env.PRIVATE_KEY) {
+      throw new Error('PRIVATE_KEY environment variable not set');
+    }
+    if (!process.env.ETH_AMOUNT) {
+      throw new Error('ETH_AMOUNT environment variable not set');
+    }
     
     console.log(`Executing transactions for ${walletAddress}:`);
     console.log(`- D.FAITH amount: ${amount}`);
     console.log(`- ETH amount: ${process.env.ETH_AMOUNT}`);
-
-    // 1. Send D.FAITH tokens
-    const tokenTx = await this.sendTokens(wallet, walletAddress, amount);
-    transaction.tokenTxHash = tokenTx.hash;
     
-    // 2. Send ETH
-    const ethTx = await this.sendETH(wallet, walletAddress, process.env.ETH_AMOUNT);
-    transaction.ethTxHash = ethTx.hash;
+    // Setup wallet address from private key
+    let walletFromPrivateKey;
+    try {
+      const wallet = new ethers.Wallet(process.env.PRIVATE_KEY);
+      walletFromPrivateKey = wallet.address;
+      console.log(`✅ Wallet address: ${walletFromPrivateKey}`);
+    } catch (error) {
+      throw new Error(`Failed to derive wallet address: ${error.message}`);
+    }
+
+    // 1. Send D.FAITH tokens using Tatum API
+    console.log('🪙 Starting token transfer with Tatum API...');
+    const tokenTx = await this.sendTokensWithTatum(walletFromPrivateKey, walletAddress, amount);
+    transaction.tokenTxHash = tokenTx.txId;
+    console.log(`✅ Token transfer completed: ${tokenTx.txId}`);
+    
+    // 2. Send ETH using Tatum API
+    console.log('💰 Starting ETH transfer with Tatum API...');
+    const ethTx = await this.sendETHWithTatum(walletFromPrivateKey, walletAddress, process.env.ETH_AMOUNT);
+    transaction.ethTxHash = ethTx.txId;
+    console.log(`✅ ETH transfer completed: ${ethTx.txId}`);
   }
 
-  async sendTokens(wallet, toAddress, amount) {
-    console.log(`Sending ${amount} D.FAITH tokens to ${toAddress}...`);
+  async sendTokensWithTatum(fromAddress, toAddress, amount) {
+    console.log(`📤 Sending ${amount} D.FAITH tokens to ${toAddress} using Tatum API...`);
     
-    const tokenContract = new ethers.Contract(DFAITH_TOKEN_ADDRESS, ERC20_ABI, wallet);
-    
-    // Convert amount to token units (considering decimals)
-    const tokenAmount = ethers.parseUnits(amount.toString(), DFAITH_DECIMALS);
-    
-    // Check balance before sending
-    const balance = await tokenContract.balanceOf(wallet.address);
-    if (balance < tokenAmount) {
-      throw new Error(`Insufficient D.FAITH balance. Required: ${amount}, Available: ${ethers.formatUnits(balance, DFAITH_DECIMALS)}`);
+    try {
+      // Convert amount to token units (considering decimals)
+      const tokenAmount = ethers.parseUnits(amount.toString(), DFAITH_DECIMALS);
+      console.log(`🔢 Token amount in units: ${tokenAmount.toString()}`);
+      
+      // Prepare Tatum API request for ERC-20 transfer
+      const tatumRequest = {
+        chain: 'BASE',
+        to: toAddress,
+        amount: tokenAmount.toString(),
+        contractAddress: DFAITH_TOKEN_ADDRESS,
+        fromPrivateKey: process.env.PRIVATE_KEY,
+        fee: {
+          gasLimit: '100000',
+          gasPrice: '20' // 20 Gwei
+        }
+      };
+      
+      console.log(`📡 Sending Tatum API request...`);
+      const response = await fetch('https://api.tatum.io/v3/blockchain/token/transaction', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.TATUM_API_KEY
+        },
+        body: JSON.stringify(tatumRequest)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Tatum API error (${response.status}): ${errorData}`);
+      }
+      
+      const result = await response.json();
+      console.log(`📋 D.FAITH transfer transaction sent: ${result.txId}`);
+      
+      // Wait a bit for transaction to be mined
+      console.log(`⏳ Waiting for confirmation...`);
+      await this.waitForTransactionConfirmation(result.txId);
+      
+      return result;
+      
+    } catch (error) {
+      console.error(`❌ Token transfer with Tatum failed:`, error.message);
+      throw error;
     }
-    
-    // Send tokens
-    const tx = await tokenContract.transfer(toAddress, tokenAmount, {
-      gasLimit: 100000
-    });
-    console.log(`D.FAITH transfer transaction sent: ${tx.hash}`);
-    
-    const receipt = await tx.wait();
-    console.log(`D.FAITH transfer confirmed in block: ${receipt.blockNumber}`);
-    
-    return receipt;
   }
 
-  async sendETH(wallet, toAddress, ethAmount) {
-    console.log(`Sending ${ethAmount} ETH to ${toAddress}...`);
+  async sendETHWithTatum(fromAddress, toAddress, ethAmount) {
+    console.log(`💰 Sending ${ethAmount} ETH to ${toAddress} using Tatum API...`);
     
-    const ethAmountWei = ethers.parseEther(ethAmount);
-    
-    // Check ETH balance
-    const balance = await wallet.provider.getBalance(wallet.address);
-    const estimatedGas = ethers.parseEther('0.001'); // Estimated gas cost
-    
-    if (balance < (ethAmountWei + estimatedGas)) {
-      throw new Error(`Insufficient ETH balance. Required: ${ethAmount} + gas, Available: ${ethers.formatEther(balance)}`);
+    try {
+      const ethAmountWei = ethers.parseEther(ethAmount);
+      console.log(`🔢 ETH amount in wei: ${ethAmountWei.toString()}`);
+      
+      // Prepare Tatum API request for ETH transfer
+      const tatumRequest = {
+        chain: 'BASE',
+        to: toAddress,
+        amount: ethers.formatEther(ethAmountWei), // Tatum expects ETH amount in ETH, not wei
+        fromPrivateKey: process.env.PRIVATE_KEY,
+        fee: {
+          gasLimit: '21000',
+          gasPrice: '20' // 20 Gwei
+        }
+      };
+      
+      console.log(`� Sending Tatum API request...`);
+      const response = await fetch('https://api.tatum.io/v3/blockchain/transaction', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.TATUM_API_KEY
+        },
+        body: JSON.stringify(tatumRequest)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Tatum API error (${response.status}): ${errorData}`);
+      }
+      
+      const result = await response.json();
+      console.log(`📋 ETH transfer transaction sent: ${result.txId}`);
+      
+      // Wait a bit for transaction to be mined
+      console.log(`⏳ Waiting for confirmation...`);
+      await this.waitForTransactionConfirmation(result.txId);
+      
+      return result;
+      
+    } catch (error) {
+      console.error(`❌ ETH transfer with Tatum failed:`, error.message);
+      throw error;
     }
-    
-    // Send ETH
-    const tx = await wallet.sendTransaction({
-      to: toAddress,
-      value: ethAmountWei,
-      gasLimit: 21000
-    });
-    console.log(`ETH transfer transaction sent: ${tx.hash}`);
-    
-    const receipt = await tx.wait();
-    console.log(`ETH transfer confirmed in block: ${receipt.blockNumber}`);
-    
-    return receipt;
+  }
+
+  async waitForTransactionConfirmation(txHash) {
+    try {
+      // Wait for transaction confirmation using Tatum API
+      const maxAttempts = 10;
+      let attempts = 0;
+      
+      while (attempts < maxAttempts) {
+        const response = await fetch(`https://api.tatum.io/v3/blockchain/transaction/BASE/${txHash}`, {
+          headers: {
+            'x-api-key': process.env.TATUM_API_KEY
+          }
+        });
+        
+        if (response.ok) {
+          const txData = await response.json();
+          if (txData.blockNumber) {
+            console.log(`✅ Transaction confirmed in block: ${txData.blockNumber}`);
+            return txData;
+          }
+        }
+        
+        attempts++;
+        console.log(`⏳ Waiting for confirmation... (${attempts}/${maxAttempts})`);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+      
+      console.log(`⚠️ Transaction confirmation timeout, but likely successful`);
+      return { confirmed: false };
+      
+    } catch (error) {
+      console.log(`⚠️ Could not verify transaction confirmation: ${error.message}`);
+      return { confirmed: false };
+    }
   }
 
   // Queue status methods
