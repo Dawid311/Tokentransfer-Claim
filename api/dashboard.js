@@ -37,13 +37,17 @@ export default async function handler(req, res) {
       if (!transaction) {
         return res.status(404).json({
           success: false,
-          error: 'Transaction not found'
+          error: 'Transaction not found',
+          searchedId: id
         });
       }
       
       return res.status(200).json({
         success: true,
-        data: transaction
+        data: {
+          ...transaction,
+          found: 'persistent_storage'
+        }
       });
     } else {
       // Get queue status
@@ -52,7 +56,13 @@ export default async function handler(req, res) {
       
       return res.status(200).json({
         success: true,
-        data: queueStatus,
+        data: {
+          ...queueStatus,
+          debug: {
+            persistentTransactionsCount: queueStatus.stats?.totalTransactions || 0,
+            recentTransactions: queueStatus.allTransactions || []
+          }
+        },
         timestamp: new Date().toISOString()
       });
     }

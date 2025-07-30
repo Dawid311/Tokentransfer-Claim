@@ -12,6 +12,7 @@ class TransactionQueue {
     this.processing = false;
     this.completedTransactions = [];
     this.failedTransactions = [];
+    this.allTransactions = new Map(); // Persistente Speicherung aller Transaktionen
     this.currentTransaction = null;
     console.log('TransactionQueue initialized');
     
@@ -32,12 +33,24 @@ class TransactionQueue {
       queuePosition: this.queue.length + 1
     };
     
+    // Speichere in persistenter Map
+    this.allTransactions.set(transaction.id, transaction);
     this.queue.push(transaction);
-    console.log(`Transaction ${transaction.id} added to queue`);
+    console.log(`Transaction ${transaction.id} added to queue and persistent storage`);
     
     // For serverless environments, process immediately
     // Don't wait for the processing to complete to avoid timeout
-    this.processQueueImmediate();
+    this.processQueueImmediate().catch(error => {
+      console.error('Background processing error:', error);
+      // Update transaction status even if processing fails
+      const tx = this.allTransactions.get(transaction.id);
+      if (tx) {
+        tx.status = 'failed';
+        tx.error = error.message;
+        tx.failedAt = new Date().toISOString();
+        this.failedTransactions.push(tx);
+      }
+    });
     
     return transaction;
   }
@@ -52,20 +65,23 @@ class TransactionQueue {
     this.processing = true;
     console.log(`🚀 Starting immediate queue processing with ${this.queue.length} transactions`);
 
-    // Process only the first transaction immediately
-    if (this.queue.length > 0) {
-      const transaction = this.queue.shift();
-      this.currentTransaction = transaction;
-      
-      console.log(`🔄 Processing transaction ${transaction.id} for ${transaction.walletAddress}`);
-      console.log(`📊 Transaction before processing:`, {
-        id: transaction.id,
-        status: transaction.status,
-        amount: transaction.amount,
-        walletAddress: transaction.walletAddress
-      });
-      
-      try {
+    let transaction = null;
+    
+    try {
+      // Process only the first transaction immediately
+      if (this.queue.length > 0) {
+        transaction = this.queue.shift();
+        this.currentTransaction = transaction;
+        
+        // Update in persistent storage
+        const persistentTx = this.allTransactions.get(transaction.id);
+        if (persistentTx) {
+          persistentTx.status = 'processing';
+          persistentTx.startedAt = new Date().toISOString();
+        }
+        
+        console.log(`🔄 Processing transaction ${transaction.id} for ${transaction.walletAddress}`);
+        
         transaction.status = 'processing';
         transaction.startedAt = new Date().toISOString();
         
@@ -75,45 +91,54 @@ class TransactionQueue {
         
         transaction.status = 'completed';
         transaction.completedAt = new Date().toISOString();
+        
+        // Update persistent storage
+        if (persistentTx) {
+          Object.assign(persistentTx, transaction);
+        }
+        
         this.completedTransactions.push(transaction);
         
         console.log(`✅ Transaction ${transaction.id} completed successfully`);
         console.log(`📈 Total completed: ${this.completedTransactions.length}`);
         
-      } catch (error) {
-        console.error(`❌ Transaction ${transaction.id} failed with error:`, {
-          message: error.message,
-          stack: error.stack,
-          name: error.name,
-          code: error.code,
-          reason: error.reason
-        });
-        
+      }
+    } catch (error) {
+      console.error(`❌ Transaction ${transaction?.id || 'unknown'} failed:`, {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+        code: error.code,
+        reason: error.reason
+      });
+      
+      if (transaction) {
         transaction.status = 'failed';
         transaction.error = error.message;
         transaction.errorDetails = {
           name: error.name,
           code: error.code,
           reason: error.reason,
-          stack: error.stack
+          stack: error.stack?.split('\n')[0]
         };
         transaction.failedAt = new Date().toISOString();
+        
+        // Update persistent storage
+        const persistentTx = this.allTransactions.get(transaction.id);
+        if (persistentTx) {
+          Object.assign(persistentTx, transaction);
+        }
+        
         this.failedTransactions.push(transaction);
-        
         console.log(`📊 Total failed: ${this.failedTransactions.length}`);
-        console.log(`💾 Failed transaction saved:`, {
-          id: transaction.id,
-          status: transaction.status,
-          error: transaction.error
-        });
-        
-        // Re-throw the error so webhook can return it
-        throw error;
-      } finally {
-        this.currentTransaction = null;
-        this.processing = false;
-        console.log(`🏁 Processing completed for transaction ${transaction.id}, processing flag reset`);
       }
+      
+      // Re-throw the error so webhook can return it
+      throw error;
+    } finally {
+      this.currentTransaction = null;
+      this.processing = false;
+      console.log(`🏁 Processing completed, processing flag reset`);
     }
 
     console.log('✅ Immediate processing completed');
@@ -408,33 +433,14 @@ class TransactionQueue {
     }
   }
 
-  // Queue status methods
-  getQueueStatus() {
-    return {
-      queue: this.queue.map(tx => ({
-        ...tx,
-        queuePosition: this.queue.indexOf(tx) + 1
-      })),
-      processing: this.processing,
-      currentTransaction: this.currentTransaction,
-      completed: this.completedTransactions.slice(-10),
-      failed: this.failedTransactions.slice(-10),
-      stats: {
-        queueLength: this.queue.length,
-        totalCompleted: this.completedTransactions.length,
-        totalFailed: this.failedTransactions.length,
-        isProcessing: this.processing
-      },
-      systemStatus: {
-        ethersAvailable: !!ethers,
-        nodeEnv: process.env.NODE_ENV,
-        timestamp: new Date().toISOString()
-      }
-    };
-  }
-
   getTransactionById(id) {
-    // Search in all arrays
+    // First check persistent storage
+    const persistentTx = this.allTransactions.get(id);
+    if (persistentTx) {
+      return persistentTx;
+    }
+    
+    // Fallback to searching in all arrays
     const allTransactions = [
       ...this.queue,
       ...this.completedTransactions,
@@ -446,6 +452,33 @@ class TransactionQueue {
     }
     
     return allTransactions.find(tx => tx.id === id);
+  }
+
+  // Queue status methods
+  getQueueStatus() {
+    return {
+      queue: this.queue.map(tx => ({
+        ...tx,
+        queuePosition: this.queue.indexOf(tx) + 1
+      })),
+      processing: this.processing,
+      currentTransaction: this.currentTransaction,
+      completed: this.completedTransactions.slice(-10),
+      failed: this.failedTransactions.slice(-10),
+      allTransactions: Array.from(this.allTransactions.values()).slice(-20), // Letzte 20 Transaktionen
+      stats: {
+        queueLength: this.queue.length,
+        totalCompleted: this.completedTransactions.length,
+        totalFailed: this.failedTransactions.length,
+        totalTransactions: this.allTransactions.size,
+        isProcessing: this.processing
+      },
+      systemStatus: {
+        ethersAvailable: !!ethers,
+        nodeEnv: process.env.NODE_ENV,
+        timestamp: new Date().toISOString()
+      }
+    };
   }
 }
 
