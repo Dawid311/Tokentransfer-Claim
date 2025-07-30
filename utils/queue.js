@@ -1,4 +1,13 @@
-import { ethers } from 'ethers';
+let ethers;
+try {
+  const ethersModule = await import('ethers');
+  ethers = ethersModule;
+  console.log('✅ Ethers successfully imported');
+} catch (error) {
+  console.error('❌ Failed to import ethers:', error.message);
+  ethers = null;
+}
+
 import { 
   BASE_RPC_URL, 
   DFAITH_TOKEN_ADDRESS, 
@@ -13,9 +22,14 @@ class TransactionQueue {
     this.completedTransactions = [];
     this.failedTransactions = [];
     this.currentTransaction = null;
+    console.log('TransactionQueue initialized');
   }
 
   addTransaction(txData) {
+    if (!ethers) {
+      throw new Error('Ethers library not available');
+    }
+    
     const transaction = {
       ...txData,
       id: Date.now() + Math.random().toString(36).substr(2, 9),
@@ -36,6 +50,11 @@ class TransactionQueue {
   }
 
   async processQueue() {
+    if (!ethers) {
+      console.error('Cannot process queue: ethers library not available');
+      return;
+    }
+    
     if (this.processing || this.queue.length === 0) {
       return;
     }
@@ -83,6 +102,10 @@ class TransactionQueue {
   }
 
   async executeTransactions(transaction) {
+    if (!ethers) {
+      throw new Error('Ethers library not available');
+    }
+    
     const { amount, walletAddress } = transaction;
     
     // Setup provider and wallet
@@ -164,13 +187,18 @@ class TransactionQueue {
       })),
       processing: this.processing,
       currentTransaction: this.currentTransaction,
-      completed: this.completedTransactions.slice(-10), // Last 10 completed
-      failed: this.failedTransactions.slice(-10), // Last 10 failed
+      completed: this.completedTransactions.slice(-10),
+      failed: this.failedTransactions.slice(-10),
       stats: {
         queueLength: this.queue.length,
         totalCompleted: this.completedTransactions.length,
         totalFailed: this.failedTransactions.length,
         isProcessing: this.processing
+      },
+      systemStatus: {
+        ethersAvailable: !!ethers,
+        nodeEnv: process.env.NODE_ENV,
+        timestamp: new Date().toISOString()
       }
     };
   }
@@ -193,3 +221,4 @@ class TransactionQueue {
 
 // Create singleton instance
 export const transactionQueue = new TransactionQueue();
+console.log('TransactionQueue singleton created and exported');

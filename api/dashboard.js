@@ -5,6 +5,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Content-Type', 'application/json');
 
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
@@ -20,10 +21,18 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log('Dashboard API called, importing transactionQueue...');
+    
+    // Check if transactionQueue is available
+    if (!transactionQueue) {
+      throw new Error('Transaction queue not initialized');
+    }
+
     const { id } = req.query;
 
     if (id) {
       // Get specific transaction
+      console.log(`Getting transaction by ID: ${id}`);
       const transaction = transactionQueue.getTransactionById(id);
       if (!transaction) {
         return res.status(404).json({
@@ -38,6 +47,7 @@ export default async function handler(req, res) {
       });
     } else {
       // Get queue status
+      console.log('Getting queue status...');
       const queueStatus = transactionQueue.getQueueStatus();
       
       return res.status(200).json({
@@ -49,11 +59,13 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Dashboard API error:', error);
+    console.error('Error stack:', error.stack);
     
     return res.status(500).json({
       success: false,
-      error: error.message,
-      timestamp: new Date().toISOString()
+      error: error.message || 'Internal server error',
+      timestamp: new Date().toISOString(),
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 }
