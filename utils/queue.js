@@ -1,13 +1,4 @@
-let ethers;
-try {
-  const ethersModule = await import('ethers');
-  ethers = ethersModule;
-  console.log('✅ Ethers successfully imported');
-} catch (error) {
-  console.error('❌ Failed to import ethers:', error.message);
-  ethers = null;
-}
-
+import { ethers } from 'ethers';
 import { 
   BASE_RPC_URL, 
   DFAITH_TOKEN_ADDRESS, 
@@ -23,6 +14,13 @@ class TransactionQueue {
     this.failedTransactions = [];
     this.currentTransaction = null;
     console.log('TransactionQueue initialized');
+    
+    // Validate ethers is available
+    if (!ethers) {
+      console.error('❌ Ethers library not available');
+    } else {
+      console.log('✅ Ethers library available');
+    }
   }
 
   addTransaction(txData) {
@@ -220,5 +218,7 @@ class TransactionQueue {
 }
 
 // Create singleton instance
+export const transactionQueue = new TransactionQueue();
+console.log('TransactionQueue singleton created and exported');
 export const transactionQueue = new TransactionQueue();
 console.log('TransactionQueue singleton created and exported');
