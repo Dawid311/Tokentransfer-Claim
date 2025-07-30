@@ -21,6 +21,8 @@ export function validateEnv() {
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
   }
+  
+  console.log('Environment variables validated successfully');
 }
 
 // Request validation
@@ -43,6 +45,10 @@ export function validateRequest(body) {
   }
   
   return {
+    amount: amount,
+    walletAddress: body.walletAddress
+  };
+}
     amount: amount,
     walletAddress: body.walletAddress
   };
