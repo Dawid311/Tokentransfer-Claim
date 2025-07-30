@@ -45,6 +45,7 @@ class TransactionQueue {
   // Immediate processing for serverless environments
   async processQueueImmediate() {
     if (this.processing || this.queue.length === 0) {
+      console.log(`⏭️ Skipping immediate processing: processing=${this.processing}, queueLength=${this.queue.length}`);
       return;
     }
 
@@ -56,13 +57,21 @@ class TransactionQueue {
       const transaction = this.queue.shift();
       this.currentTransaction = transaction;
       
+      console.log(`🔄 Processing transaction ${transaction.id} for ${transaction.walletAddress}`);
+      console.log(`📊 Transaction before processing:`, {
+        id: transaction.id,
+        status: transaction.status,
+        amount: transaction.amount,
+        walletAddress: transaction.walletAddress
+      });
+      
       try {
         transaction.status = 'processing';
         transaction.startedAt = new Date().toISOString();
         
-        console.log(`🔄 Processing transaction ${transaction.id} for ${transaction.walletAddress}`);
-        
+        console.log(`⚡ Starting executeTransactions for ${transaction.id}...`);
         await this.executeTransactions(transaction);
+        console.log(`✅ executeTransactions completed for ${transaction.id}`);
         
         transaction.status = 'completed';
         transaction.completedAt = new Date().toISOString();
@@ -72,8 +81,9 @@ class TransactionQueue {
         console.log(`📈 Total completed: ${this.completedTransactions.length}`);
         
       } catch (error) {
-        console.error(`❌ Transaction ${transaction.id} failed:`, error.message);
-        console.error(`🔍 Error details:`, {
+        console.error(`❌ Transaction ${transaction.id} failed with error:`, {
+          message: error.message,
+          stack: error.stack,
           name: error.name,
           code: error.code,
           reason: error.reason
@@ -84,21 +94,28 @@ class TransactionQueue {
         transaction.errorDetails = {
           name: error.name,
           code: error.code,
-          reason: error.reason
+          reason: error.reason,
+          stack: error.stack
         };
         transaction.failedAt = new Date().toISOString();
         this.failedTransactions.push(transaction);
         
         console.log(`📊 Total failed: ${this.failedTransactions.length}`);
+        console.log(`💾 Failed transaction saved:`, {
+          id: transaction.id,
+          status: transaction.status,
+          error: transaction.error
+        });
         
         // Re-throw the error so webhook can return it
         throw error;
+      } finally {
+        this.currentTransaction = null;
+        this.processing = false;
+        console.log(`🏁 Processing completed for transaction ${transaction.id}, processing flag reset`);
       }
-      
-      this.currentTransaction = null;
     }
 
-    this.processing = false;
     console.log('✅ Immediate processing completed');
   }
 
@@ -172,6 +189,8 @@ class TransactionQueue {
   async executeTransactions(transaction) {
     const { amount, walletAddress } = transaction;
     
+    console.log(`🔧 Starting executeTransactions for ${transaction.id}`);
+    
     // Validate environment variables
     if (!process.env.TATUM_API_KEY) {
       throw new Error('TATUM_API_KEY environment variable not set');
@@ -183,6 +202,7 @@ class TransactionQueue {
       throw new Error('ETH_AMOUNT environment variable not set');
     }
     
+    console.log(`✅ Environment variables validated`);
     console.log(`Executing transactions for ${walletAddress}:`);
     console.log(`- D.FAITH amount: ${amount}`);
     console.log(`- ETH amount: ${process.env.ETH_AMOUNT}`);
@@ -192,22 +212,36 @@ class TransactionQueue {
     try {
       const wallet = new ethers.Wallet(process.env.PRIVATE_KEY);
       walletFromPrivateKey = wallet.address;
-      console.log(`✅ Wallet address: ${walletFromPrivateKey}`);
+      console.log(`✅ Wallet address derived: ${walletFromPrivateKey}`);
     } catch (error) {
+      console.error(`❌ Failed to derive wallet address:`, error);
       throw new Error(`Failed to derive wallet address: ${error.message}`);
     }
 
-    // 1. Send D.FAITH tokens using Tatum API
-    console.log('🪙 Starting token transfer with Tatum API...');
-    const tokenTx = await this.sendTokensWithTatum(walletFromPrivateKey, walletAddress, amount);
-    transaction.tokenTxHash = tokenTx.txId;
-    console.log(`✅ Token transfer completed: ${tokenTx.txId}`);
-    
-    // 2. Send ETH using Tatum API
-    console.log('💰 Starting ETH transfer with Tatum API...');
-    const ethTx = await this.sendETHWithTatum(walletFromPrivateKey, walletAddress, process.env.ETH_AMOUNT);
-    transaction.ethTxHash = ethTx.txId;
-    console.log(`✅ ETH transfer completed: ${ethTx.txId}`);
+    try {
+      // 1. Send D.FAITH tokens using Tatum API
+      console.log('🪙 Starting token transfer with Tatum API...');
+      const tokenTx = await this.sendTokensWithTatum(walletFromPrivateKey, walletAddress, amount);
+      transaction.tokenTxHash = tokenTx.txId;
+      console.log(`✅ Token transfer completed: ${tokenTx.txId}`);
+      
+      // 2. Send ETH using Tatum API
+      console.log('💰 Starting ETH transfer with Tatum API...');
+      const ethTx = await this.sendETHWithTatum(walletFromPrivateKey, walletAddress, process.env.ETH_AMOUNT);
+      transaction.ethTxHash = ethTx.txId;
+      console.log(`✅ ETH transfer completed: ${ethTx.txId}`);
+      
+      console.log(`🎉 All transactions completed for ${transaction.id}`);
+      
+    } catch (error) {
+      console.error(`💥 executeTransactions failed for ${transaction.id}:`, {
+        message: error.message,
+        stack: error.stack,
+        tokenTxHash: transaction.tokenTxHash,
+        ethTxHash: transaction.ethTxHash
+      });
+      throw error;
+    }
   }
 
   async sendTokensWithTatum(fromAddress, toAddress, amount) {
